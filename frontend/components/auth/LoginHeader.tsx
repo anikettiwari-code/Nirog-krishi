@@ -10,7 +10,7 @@ export const LoginHeader = () => {
             <View style={styles.logoContainer}>
                 <Leaf color={COLORS.primary} size={48} fill={COLORS.primary} />
             </View>
-            <Text style={styles.appName}>CropGuard AI</Text>
+            <Text style={styles.appName}>निरोग कृषि</Text>
             <Text style={styles.tagline}>Intelligent Crop Disease Detection</Text>
         </Animated.View>
     );

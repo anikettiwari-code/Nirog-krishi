@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "react-native-expo-starter",
-    "slug": "react-native-expo-starter",
+    "name": "निरोग कृषि",
+    "slug": "nirog-krishi",
     "version": "1.0.0",
     "orientation": "portrait",
     "scheme": "myapp",
@@ -12,7 +12,7 @@
     },
     "web": {
       "bundler": "metro",
-      "output": "single"
+      "output": "server"
     },
     "plugins": [
       "expo-router",

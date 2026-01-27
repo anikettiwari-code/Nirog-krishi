@@ -10,7 +10,7 @@ export const Header = () => {
     return (
         <View style={styles.headerContainer}>
             <View style={styles.headerTop}>
-                <Text style={styles.headerTitle}>CropGuard AI</Text>
+                <Text style={styles.headerTitle}>निरोग कृषि</Text>
                 <View style={styles.headerIcons}>
                     <TouchableOpacity style={styles.iconButton} onPress={() => router.push('/notifications')}>
                         <View style={styles.notificationBadge} />

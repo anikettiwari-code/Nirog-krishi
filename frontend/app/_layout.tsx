@@ -25,8 +25,10 @@ export default function RootLayout() {
         <Stack.Screen name="market/index" />
         <Stack.Screen name="history/index" />
         <Stack.Screen name="community/index" />
+        <Stack.Screen name="map/index" />
         <Stack.Screen name="assistant/index" />
         <Stack.Screen name="settings/index" />
+        <Stack.Screen name="profile/index" />
         <Stack.Screen name="notifications/index" />
       </Stack>
       <StatusBar style="light" />

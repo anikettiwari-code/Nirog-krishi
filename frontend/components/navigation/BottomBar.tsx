@@ -5,7 +5,7 @@ import { Home, Clock, TrendingUp, Map as MapIcon, Settings, Camera } from 'lucid
 import { COLORS, SPACING, SHADOWS, RADIUS } from '../../constants/theme';
 
 interface BottomBarProps {
-    activePage?: 'home' | 'history' | 'market' | 'map' | 'settings';
+    activePage?: 'home' | 'history' | 'market' | 'map' | 'settings' | 'profile';
 }
 
 export const BottomBar = ({ activePage = 'home' }: BottomBarProps) => {
