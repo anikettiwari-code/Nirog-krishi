@@ -1,0 +1,105 @@
+{
+  "diseases": [
+    {
+      "id": 0,
+      "name": "Potato_Early_Blight",
+      "symptoms": "Brown spots with concentric rings on leaves.",
+      "cause": "Fungal infection caused by Alternaria solani.",
+      "organic_treatment": "Spray Neem oil or Baking soda solution.",
+      "chemical_treatment": "Apply fungicides containing Mancozeb or Chlorothalonil."
+    },
+    {
+      "id": 1,
+      "name": "Potato_Late_Blight",
+      "symptoms": "Dark brown blotches with white fungal growth.",
+      "cause": "Oomycete pathogen Phytophthora infestans.",
+      "organic_treatment": "Copper-based sprays or compost tea.",
+      "chemical_treatment": "Fungicides with Metalaxyl or Cymoxanil."
+    },
+    {
+      "id": 2,
+      "name": "Potato_Healthy",
+      "symptoms": "No spots or discoloration.",
+      "cause": "N/A",
+      "organic_treatment": "N/A",
+      "chemical_treatment": "N/A"
+    },
+    {
+      "id": 3,
+      "name": "Rice_Brown_Spot",
+      "symptoms": "Round to oval dark-brown lesions with yellow halos.",
+      "cause": "Fungal infection by Cochliobolus miyabeanus.",
+      "organic_treatment": "Hot water treatment of seeds (53-54°C) for 10-12 minutes.",
+      "chemical_treatment": "Seed treatment with Carbendazim or Mancozeb."
+    },
+    {
+      "id": 4,
+      "name": "Rice_Leaf_Blast",
+      "symptoms": "Spindle-shaped spots with gray centers and brown margins.",
+      "cause": "Fungus Magnaporthe oryzae.",
+      "organic_treatment": "Spray Pseudomonas fluorescens bacteria.",
+      "chemical_treatment": "Spray Tricyclazole 75 WP or Isoprothiolane.",
+      "risk_factors": {
+          "humidity_min": 90,
+          "temperature_range": [25, 28],
+          "alert_message": "High Humidity detected! Risk of Blast is severe."
+      }
+    },
+    {
+      "id": 5,
+      "name": "Wheat_Stripe_Rust",
+      "symptoms": "Yellow streaks (pustules) forming stripes on leaves.",
+      "cause": "Fungus Puccinia striiformis.",
+      "organic_treatment": "Remove infected plants; Use resistant varieties.",
+      "chemical_treatment": "Spray Propiconazole or Tebuconazole."
+    },
+    {
+      "id": 6,
+      "name": "Wheat_Septoria",
+      "symptoms": "Yellow flecks turning into irregular brown blotches.",
+      "cause": "Fungal complex Septoria tritici.",
+      "organic_treatment": "Crop rotation and proper residue management.",
+      "chemical_treatment": "Chlorothalonil application at early stages."
+    },
+    {
+      "id": 7,
+      "name": "Tomato_Bacterial_Spot",
+      "symptoms": "Small, water-soaked spots on leaves that turn brown.",
+      "cause": "Bacteria Xanthomonas campestris pv. vesicatoria.",
+      "organic_treatment": "Copper sprays and avoid overhead watering.",
+      "chemical_treatment": "Copper hydroxide + Mancozeb sprays."
+    },
+    {
+      "id": 8,
+      "name": "Tomato_Early_Blight",
+      "symptoms": "Dark, concentric rings (bullseye) on lower leaves.",
+      "cause": "Fungus Alternaria solani.",
+      "organic_treatment": "Remove lower leaves, mulch soil, use neem oil.",
+      "chemical_treatment": "Apply Chlorothalonil or Mancozeb."
+    },
+    {
+      "id": 9,
+      "name": "Tomato_Late_Blight",
+      "symptoms": "Greasy, gray-green spots on leaves; white mold in wet weather.",
+      "cause": "Oomycete Phytophthora infestans.",
+      "organic_treatment": "Copper sprays (preventative only).",
+      "chemical_treatment": "Fungicides with Chlorothalonil or Metalaxyl."
+    },
+    {
+      "id": 10,
+      "name": "Tomato_Leaf_Mold",
+      "symptoms": "Pale yellow spots on upper leaf surface; gray mold underneath.",
+      "cause": "Fungus Passalora fulva.",
+      "organic_treatment": "Improve air circulation; reduce humidity.",
+      "chemical_treatment": "Fungicides like difenoconazole."
+    },
+    {
+      "id": 11,
+      "name": "Tomato_Healthy",
+      "symptoms": "Green, vibrant leaves with no spots.",
+      "cause": "N/A",
+      "organic_treatment": "N/A",
+      "chemical_treatment": "N/A"
+    }
+  ]
+}

@@ -20,3 +20,42 @@ yarn-error.log*
 # OS
 .DS_Store
 Thumbs.db
+*.pem
+
+# local env files
+.env*.local
+
+# typescript
+*.tsbuildinfo
+
+# generated native folders
+/ios
+/android
+
+# Python / GPU Model Training
+models/venv/
+models/tf_gpu_env/
+models/datasets/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Model Artifacts (Too large for git)
+*.tflite
+*.h5
+*.keras
+*.tfrecord
+models/assets/checkpoints/
+
+# Logs
+*.log
+benchmark_results.txt
+
+# GPU Pipeline Generated Data
+models/gpu_run_*/
+models/gpu_model_artifacts/
+models/prepared_data/
+prepared_data/
+models/logs/
+models/gpu_pipeline/tf_gpu_env/
