@@ -1,116 +1,32 @@
 const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
-const mongoose = require('mongoose');
-const { GoogleGenAI } = require('@google/genai');
+const { GoogleGenerativeAI } = require('@google/generative-ai');
+const supabase = require('./database');
 require('dotenv').config();
 
 const app = express();
-const port = 5000;
-
-// ==================== DATABASE CONNECTION ====================
-mongoose.connect(process.env.MONGODB_URI)
-    .then(() => console.log('✅ MongoDB Connected'))
-    .catch(err => console.log('❌ MongoDB Error:', err.message));
-
-// ==================== SCHEMAS ====================
-const UserSchema = new mongoose.Schema({
-    userId: { type: String, required: true, unique: true },
-    name: { type: String, required: true },
-    password: { type: String, required: true }, // Ideally hashed
-    createdAt: { type: Date, default: Date.now }
-});
-
-const ScanResultSchema = new mongoose.Schema({
-    userId: String, // Link to user
-    imageName: String,
-    imageSize: Number,
-    mimeType: String,
-    analysisResult: String,
-    plantType: String,
-    diseaseName: String,
-    severity: { type: String, default: 'Unknown' },
-    isHealthy: { type: Boolean, default: false },
-    createdAt: { type: Date, default: Date.now }
-});
-
-const ChatMessageSchema = new mongoose.Schema({
-    userId: String, // Link to user
-    sessionId: { type: String, required: true, index: true },
-    role: { type: String, enum: ['user', 'assistant'], required: true },
-    content: { type: String, required: true },
-    createdAt: { type: Date, default: Date.now }
-});
-
-const OutbreakSchema = new mongoose.Schema({
-    diseaseName: { type: String, required: true },
-    plantType: String,
-    severity: { type: String, default: 'Moderate' },
-    location: {
-        type: { type: String, default: 'Point' },
-        coordinates: [Number]
-    },
-    address: String,
-    reportCount: { type: Number, default: 1 },
-    status: { type: String, default: 'active' },
-    reportedAt: { type: Date, default: Date.now }
-});
-
-const User = mongoose.model('User', UserSchema);
-const ScanResult = mongoose.model('ScanResult', ScanResultSchema);
-const ChatMessage = mongoose.model('ChatMessage', ChatMessageSchema);
-const Outbreak = mongoose.model('Outbreak', OutbreakSchema);
+const port = process.env.PORT || 5000;
 
 // ==================== MIDDLEWARE ====================
-app.use(cors());
+app.use(cors()); // Allow all origins for mobile dev
 app.use(express.json());
 const upload = multer({ storage: multer.memoryStorage() });
 
 // ==================== GEMINI AI ====================
-const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-const MODEL = 'gemini-2.5-flash';
+const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
+const MODEL = 'gemini-1.5-flash';
 
 // ==================== ROUTES ====================
 
-// --- AUTHENTICATION ---
-app.post('/auth/register', async (req, res) => {
-    try {
-        const { userId, name, password } = req.body;
-        if (!userId || !name || !password) {
-            return res.status(400).json({ error: 'Missing fields' });
-        }
-
-        const existingUser = await User.findOne({ userId });
-        if (existingUser) {
-            return res.status(400).json({ error: 'User ID already exists' });
-        }
-
-        const newUser = new User({ userId, name, password });
-        await newUser.save();
-
-        res.json(newUser);
-    } catch (error) {
-        res.status(500).json({ error: 'Registration failed', details: error.message });
-    }
-});
-
-app.post('/auth/login', async (req, res) => {
-    try {
-        const { userId, password } = req.body;
-        const user = await User.findOne({ userId });
-
-        if (!user || user.password !== password) {
-            return res.status(401).json({ error: 'Invalid credentials' });
-        }
-
-        res.json(user);
-    } catch (error) {
-        res.status(500).json({ error: 'Login failed' });
-    }
-});
-
+// Health Check
 app.get('/', (req, res) => {
-    res.json({ status: 'running', model: MODEL });
+    res.json({
+        status: 'running',
+        service: 'nirog-krishi-backend',
+        model: MODEL,
+        database: 'supabase'
+    });
 });
 
 // ==================== IMAGE ANALYSIS ====================
@@ -136,8 +52,10 @@ app.post('/analyze', upload.single('image'), async (req, res) => {
 If healthy, set disease to null.` }
         ];
 
-        const response = await ai.models.generateContent({ model: MODEL, contents });
-        const resultText = response.text;
+        const model = genAI.getGenerativeModel({ model: MODEL });
+        const result = await model.generateContent(contents);
+        const response = await result.response;
+        const resultText = response.text();
         console.log('✅ Analysis complete');
 
         let analysisData = null;
@@ -148,21 +66,35 @@ If healthy, set disease to null.` }
             analysisData = { raw: resultText };
         }
 
-        const scan = new ScanResult({
-            imageName: req.file.originalname || 'captured',
-            imageSize: req.file.size,
-            mimeType: req.file.mimetype,
-            analysisResult: resultText,
-            plantType: analysisData.plantType,
-            diseaseName: analysisData.disease?.name,
-            severity: analysisData.disease?.severity || 'Unknown',
-            isHealthy: analysisData.isHealthy
-        });
-        await scan.save();
+        // Save to Supabase
+        const { data: scan, error } = await supabase
+            .from('scan_results')
+            .insert([{
+                image_name: req.file.originalname || 'captured',
+                image_size: req.file.size,
+                mime_type: req.file.mimetype,
+                analysis_result: resultText,
+                plant_type: analysisData.plantType,
+                disease_name: analysisData.disease?.name,
+                severity: analysisData.disease?.severity || 'Unknown',
+                is_healthy: analysisData.isHealthy
+            }])
+            .select()
+            .single();
 
-        res.json({ result: resultText, analysis: analysisData, scanId: scan._id });
+        if (error) {
+            console.error('Database error:', error);
+            // Still return analysis even if DB save fails
+        }
+
+        res.json({
+            result: resultText,
+            analysis: analysisData,
+            scanId: scan?.id
+        });
+
     } catch (error) {
-        console.error('❌ Error:', error.message);
+        console.error('❌ Error:', error);
         res.status(500).json({ error: 'Failed to analyze', details: error.message });
     }
 });
@@ -170,9 +102,16 @@ If healthy, set disease to null.` }
 // ==================== SCAN HISTORY ====================
 app.get('/history', async (req, res) => {
     try {
-        const scans = await ScanResult.find().sort({ createdAt: -1 }).limit(50);
+        const { data: scans, error } = await supabase
+            .from('scan_results')
+            .select('*')
+            .order('created_at', { ascending: false })
+            .limit(50);
+
+        if (error) throw error;
         res.json(scans);
     } catch (error) {
+        console.error('History error:', error);
         res.status(500).json({ error: 'Failed to fetch history' });
     }
 });
@@ -186,30 +125,53 @@ app.post('/chat', async (req, res) => {
         const session = sessionId || `session_${Date.now()}`;
         console.log('💬 Chat:', message.substring(0, 40) + '...');
 
-        const history = await ChatMessage.find({ sessionId: session }).sort({ createdAt: -1 }).limit(6);
-        let context = history.reverse().map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n');
+        // Fetch conversation history
+        const { data: history } = await supabase
+            .from('chat_messages')
+            .select('*')
+            .eq('session_id', session)
+            .order('created_at', { ascending: false })
+            .limit(6);
+
+        let context = '';
+        if (history && history.length > 0) {
+            context = history.reverse()
+                .map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`)
+                .join('\n');
+        }
 
         const prompt = `You are CropGuard AI, an expert agricultural assistant. Help farmers with plant diseases, pest control, fertilizers, irrigation tips. Be helpful and concise.
 ${context ? `\nConversation:\n${context}\n` : ''}
 User: ${message}
 Assistant:`;
 
-        const response = await ai.models.generateContent({ model: MODEL, contents: prompt });
-        const reply = response.text;
+        const model = genAI.getGenerativeModel({ model: MODEL });
+        const result = await model.generateContent(prompt);
+        const response = await result.response;
+        const reply = response.text();
 
-        await ChatMessage.create({ sessionId: session, role: 'user', content: message });
-        await ChatMessage.create({ sessionId: session, role: 'assistant', content: reply });
+        // Save messages to Supabase
+        await supabase.from('chat_messages').insert([
+            { session_id: session, role: 'user', content: message },
+            { session_id: session, role: 'assistant', content: reply }
+        ]);
 
         res.json({ reply, sessionId: session });
     } catch (error) {
-        console.error('❌ Chat error:', error.message);
+        console.error('❌ Chat error:', error);
         res.status(500).json({ error: 'Chat failed', details: error.message });
     }
 });
 
 app.get('/chat/history/:sessionId', async (req, res) => {
     try {
-        const messages = await ChatMessage.find({ sessionId: req.params.sessionId }).sort({ createdAt: 1 });
+        const { data: messages, error } = await supabase
+            .from('chat_messages')
+            .select('*')
+            .eq('session_id', req.params.sessionId)
+            .order('created_at', { ascending: true });
+
+        if (error) throw error;
         res.json(messages);
     } catch (error) {
         res.status(500).json({ error: 'Failed to fetch chat history' });
@@ -219,22 +181,31 @@ app.get('/chat/history/:sessionId', async (req, res) => {
 // ==================== OUTBREAKS/MAP ====================
 app.get('/outbreaks', async (req, res) => {
     try {
-        const outbreaks = await Outbreak.find({ status: 'active' }).sort({ reportedAt: -1 });
+        const { data: outbreaks, error } = await supabase
+            .from('outbreaks')
+            .select('*')
+            .eq('status', 'active')
+            .order('reported_at', { ascending: false });
+
+        if (error) throw error;
 
         // Return as GeoJSON
         const geoJson = {
             type: 'FeatureCollection',
             features: outbreaks.map(o => ({
                 type: 'Feature',
-                geometry: o.location,
+                geometry: {
+                    type: 'Point',
+                    coordinates: [o.longitude, o.latitude]
+                },
                 properties: {
-                    id: o._id,
-                    diseaseName: o.diseaseName,
-                    plantType: o.plantType,
+                    id: o.id,
+                    diseaseName: o.disease_name,
+                    plantType: o.plant_type,
                     severity: o.severity,
                     address: o.address,
-                    reportCount: o.reportCount,
-                    reportedAt: o.reportedAt
+                    reportCount: o.report_count,
+                    reportedAt: o.reported_at
                 }
             }))
         };
@@ -251,23 +222,31 @@ app.post('/outbreaks', async (req, res) => {
             return res.status(400).json({ error: 'Disease name and location required' });
         }
 
-        const outbreak = new Outbreak({
-            diseaseName,
-            plantType,
-            severity: severity || 'Moderate',
-            location: { type: 'Point', coordinates: [longitude, latitude] },
-            address
-        });
-        await outbreak.save();
+        const { data: outbreak, error } = await supabase
+            .from('outbreaks')
+            .insert([{
+                disease_name: diseaseName,
+                plant_type: plantType,
+                severity: severity || 'Moderate',
+                latitude,
+                longitude,
+                address
+            }])
+            .select()
+            .single();
+
+        if (error) throw error;
         res.json({ success: true, outbreak });
     } catch (error) {
+        console.error('Outbreak report error:', error);
         res.status(500).json({ error: 'Failed to report outbreak' });
     }
 });
 
 // ==================== START SERVER ====================
 app.listen(port, () => {
-    console.log(`\n🚀 Server running at http://localhost:${port}`);
+    console.log(`\n🚀 Nirog Krishi Backend running at http://localhost:${port}`);
     console.log(`📊 Model: ${MODEL}`);
+    console.log(`🗄️  Database: Supabase (PostgreSQL)`);
     console.log(`📡 Endpoints: /analyze, /chat, /history, /outbreaks\n`);
 });

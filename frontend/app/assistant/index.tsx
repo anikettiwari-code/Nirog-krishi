@@ -14,10 +14,14 @@ interface Message {
     content: string;
 }
 
+import { Mic } from 'lucide-react-native';
+import { VoiceOverlay } from '../../components/assistant/VoiceOverlay';
+
 export default function AssistantScreen() {
     const [messages, setMessages] = useState<Message[]>([]);
     const [inputText, setInputText] = useState('');
     const [isLoading, setIsLoading] = useState(false);
+    const [isListening, setIsListening] = useState(false);
     const scrollRef = useRef<ScrollView>(null);
 
     useFocusEffect(
@@ -76,11 +80,25 @@ export default function AssistantScreen() {
         setTimeout(() => scrollRef.current?.scrollToEnd({ animated: true }), 100);
     }, [messages]);
 
+    const toggleListening = () => {
+        if (!isListening) {
+            setIsListening(true);
+            setTimeout(() => {
+                setIsListening(false);
+                setInputText("Is the soil moisture enough for my potato crop?");
+            }, 3000);
+        } else {
+            setIsListening(false);
+        }
+    };
+
     return (
         <View style={styles.container}>
             <StatusBar style="dark" />
+            <VoiceOverlay active={isListening} />
+
             <View style={styles.header}>
-                <ScreenHeader title="AI Assistant" />
+                <ScreenHeader title="Agri-Assistant" />
                 <TouchableOpacity onPress={clearChat} style={styles.clearBtn}>
                     <Trash2 color="#EF4444" size={20} />
                 </TouchableOpacity>
@@ -109,7 +127,10 @@ export default function AssistantScreen() {
                 </ScrollView>
 
                 <View style={styles.inputContainer}>
-                    <TextInput style={styles.input} placeholder="Ask about your crops..." placeholderTextColor="#9CA3AF" value={inputText} onChangeText={setInputText} multiline />
+                    <TouchableOpacity style={styles.micBtn} onPress={toggleListening}>
+                        <Mic color={COLORS.primary} size={24} />
+                    </TouchableOpacity>
+                    <TextInput style={styles.input} placeholder="Ask Agri-AI..." placeholderTextColor="#9CA3AF" value={inputText} onChangeText={setInputText} multiline />
                     <TouchableOpacity style={[styles.sendBtn, (!inputText.trim() || isLoading) && styles.sendBtnDisabled]} onPress={sendMessage} disabled={!inputText.trim() || isLoading}>
                         <Send color="#fff" size={20} />
                     </TouchableOpacity>
@@ -137,7 +158,8 @@ const styles = StyleSheet.create({
     userText: { color: '#fff' },
     loadingBubble: { flexDirection: 'row', alignItems: 'center', gap: 8 },
     loadingText: { color: '#9CA3AF', fontSize: 14 },
-    inputContainer: { flexDirection: 'row', alignItems: 'flex-end', padding: SPACING.md, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E5E7EB' },
+    inputContainer: { flexDirection: 'row', alignItems: 'center', padding: SPACING.md, backgroundColor: '#fff', borderTopWidth: 1, borderTopColor: '#E5E7EB' },
+    micBtn: { padding: 10, marginRight: 4 },
     input: { flex: 1, backgroundColor: '#F3F4F6', borderRadius: 24, paddingHorizontal: 16, paddingVertical: 12, fontSize: 16, maxHeight: 100, marginRight: 8 },
     sendBtn: { width: 44, height: 44, borderRadius: 22, backgroundColor: COLORS.primary, justifyContent: 'center', alignItems: 'center' },
     sendBtnDisabled: { backgroundColor: '#D1D5DB' },

@@ -1,7 +1,8 @@
 import { GoogleGenAI } from '@google/genai';
-import connectToDatabase from '../../lib/db';
-import ScanResult from '../../models/ScanResult';
+import { db } from '../../lib/firebase';
+import { collection, doc, setDoc, getDocs, query, where, orderBy, limit, serverTimestamp } from 'firebase/firestore';
 import { Buffer } from 'buffer'; // Node environment
+import { API_CONFIG } from '../../constants/config';
 
 const MAX_SIZE = 10 * 1024 * 1024; // 10MB
 
@@ -23,13 +24,17 @@ export async function POST(request: Request) {
         const base64Image = buffer.toString('base64');
         const mimeType = image.type || 'image/jpeg';
 
+
         // AI Analysis
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const MODEL = 'gemini-2.5-flash';
+        const apiKey = process.env.GEMINI_API_KEY || API_CONFIG.GEMINI_API_KEY;
+        const ai = new GoogleGenAI({ apiKey });
+        // User requested "2.5 flash" -> Mapping to 2.0 Flash Experimental
+        const MODEL = 'gemini-2.0-flash-exp';
 
         console.log('[API] Analyzing image...', image.name, image.size);
 
-        const contents = [
+        // Construct parts for the new strict format
+        const parts = [
             { inlineData: { mimeType: mimeType, data: base64Image } },
             {
                 text: `Analyze this crop/plant image. Return ONLY valid JSON:
@@ -51,7 +56,13 @@ export async function POST(request: Request) {
 If healthy, set disease to null.` }
         ];
 
-        const response = await ai.models.generateContent({ model: MODEL, contents });
+        const response = await ai.models.generateContent({
+            model: MODEL,
+            contents: [{
+                role: 'user',
+                parts: parts
+            }]
+        });
         const resultText = response.text || '';
 
         // Parse JSON safely
@@ -63,25 +74,32 @@ If healthy, set disease to null.` }
             analysisData = { raw: resultText };
         }
 
-        // Save to DB
-        await connectToDatabase();
-
-        const scan = new ScanResult({
+        // Save to DB (Firestore)
+        const scanData = {
             userId: userId || 'anonymous',
             imageName: image.name,
             imageSize: image.size,
             mimeType: mimeType,
-            imageBase64: base64Image, // Save to DB
-            analysisResult: JSON.stringify(analysisData), // Save CLEAN JSON (no backticks)
-            plantType: analysisData.plantType,
-            diseaseName: analysisData.disease?.name,
+            // Firestore has 1MB limit. Only save image if < 900KB.
+            // In production, use Firebase Storage and save the URL instead.
+            imageBase64: base64Image.length < 900000 ? base64Image : null,
+            imageTooLarge: base64Image.length >= 900000,
+            analysisResult: JSON.stringify(analysisData),
+            plantType: analysisData.plantType || 'Unknown',
+            diseaseName: analysisData.disease?.name || 'None',
             severity: analysisData.disease?.severity || 'Unknown',
-            isHealthy: analysisData.isHealthy
+            isHealthy: !!analysisData.isHealthy,
+            createdAt: serverTimestamp()
+        };
+
+        const scanRef = doc(collection(db, 'scan_results'));
+        await setDoc(scanRef, scanData);
+
+        return Response.json({
+            result: resultText,
+            analysis: analysisData,
+            scanId: scanRef.id
         });
-
-        await scan.save();
-
-        return Response.json({ result: resultText, analysis: analysisData, scanId: scan._id });
 
     } catch (error: any) {
         console.error('[API] Analyze Error:', error);
@@ -96,15 +114,23 @@ export async function GET(request: Request) {
 
         if (!userId) return Response.json({ error: 'userId required' }, { status: 400 });
 
-        await connectToDatabase();
+        const scansQuery = query(
+            collection(db, 'scan_results'),
+            where('userId', '==', userId),
+            orderBy('createdAt', 'desc'),
+            limit(50)
+        );
 
-        // Return latest 50 scans, sorted new to old
-        const scans = await ScanResult.find({ userId })
-            .sort({ createdAt: -1 })
-            .limit(50);
+        const querySnapshot = await getDocs(scansQuery);
+        const scans = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+        }));
 
         return Response.json(scans);
     } catch (error: any) {
-        return Response.json({ error: 'Internal Server Error' }, { status: 500 });
+        console.error('[API] Analyze GET Error:', error);
+        return Response.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
     }
 }

@@ -1,6 +1,7 @@
 import { GoogleGenAI } from '@google/genai';
-import connectToDatabase from '../../lib/db';
-import ChatMessage from '../../models/ChatMessage';
+import { db } from '../../lib/firebase';
+import { collection, addDoc, getDocs, query, where, orderBy, limit, serverTimestamp } from 'firebase/firestore';
+import { API_CONFIG } from '../../constants/config';
 
 export async function POST(request: Request) {
     try {
@@ -11,33 +12,53 @@ export async function POST(request: Request) {
         }
 
         const session = sessionId || `session_${Date.now()}`;
-        await connectToDatabase();
 
         // Fetch history
-        const history = await ChatMessage.find({ sessionId: session }).sort({ createdAt: -1 }).limit(6);
-        const context = history.reverse().map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n');
+        const chatQuery = query(
+            collection(db, 'chat_messages'),
+            where('sessionId', '==', session),
+            orderBy('createdAt', 'desc'),
+            limit(6)
+        );
+        const querySnapshot = await getDocs(chatQuery);
+        const historyDocs = querySnapshot.docs.map(doc => doc.data());
+        const context = historyDocs.reverse().map(m => `${m.role === 'user' ? 'User' : 'Assistant'}: ${m.content}`).join('\n');
 
-        // AI
-        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const MODEL = 'gemini-2.5-flash';
+        // AI - Gemini
+        // Use Config Fallback if Env is missing (Fixes "API Key not found" error)
+        const apiKey = process.env.GEMINI_API_KEY || API_CONFIG.GEMINI_API_KEY;
+        if (!apiKey) throw new Error('Gemini API Key is missing. Check .env or config.ts');
+
+        const ai = new GoogleGenAI({ apiKey });
+        // User requested "2.5 flash" -> Mapping to 2.0 Flash Experimental
+        const MODEL = 'gemini-2.0-flash-exp';
 
         const prompt = `You are CropGuard AI, an expert agricultural assistant. Help farmers with plant diseases, pest control, fertilizers, irrigation tips. Be helpful and concise.
 ${context ? `\nConversation:\n${context}\n` : ''}
 User: ${message}
 Assistant:`;
 
-        const response = await ai.models.generateContent({ model: MODEL, contents: prompt });
+        // Fix: Ensure strict format for 'contents'
+        const response = await ai.models.generateContent({
+            model: MODEL,
+            contents: [{
+                role: 'user',
+                parts: [{ text: prompt }]
+            }]
+        });
         const reply = response.text || 'Sorry, I am unable to respond right now.';
 
         // Save
-        await ChatMessage.create({ sessionId: session, userId, role: 'user', content: message });
-        await ChatMessage.create({ sessionId: session, userId, role: 'assistant', content: reply });
+        const chatCollection = collection(db, 'chat_messages');
+        await addDoc(chatCollection, { userId: userId || 'anonymous', sessionId: session, role: 'user', content: message, createdAt: serverTimestamp() });
+        await addDoc(chatCollection, { userId: userId || 'anonymous', sessionId: session, role: 'assistant', content: reply, createdAt: serverTimestamp() });
 
         return Response.json({ reply, sessionId: session });
 
     } catch (error: any) {
         console.error('[API] Chat Error:', error);
-        return Response.json({ error: 'Internal Server Error' }, { status: 500 });
+        // Expose actual error to client for debugging
+        return Response.json({ error: error.message || 'Internal Server Error', details: error.toString() }, { status: 500 });
     }
 }
 
@@ -48,13 +69,22 @@ export async function GET(request: Request) {
 
         if (!userId) return Response.json({ error: 'userId required' }, { status: 400 });
 
-        await connectToDatabase();
-
         // Return all chats for user, sorted old to new
-        const chats = await ChatMessage.find({ userId }).sort({ createdAt: 1 });
+        const chatsQuery = query(
+            collection(db, 'chat_messages'),
+            where('userId', '==', userId),
+            orderBy('createdAt', 'asc')
+        );
+        const querySnapshot = await getDocs(chatsQuery);
+        const chats = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data(),
+            createdAt: doc.data().createdAt?.toDate?.() || doc.data().createdAt
+        }));
 
         return Response.json(chats);
     } catch (error: any) {
+        console.error('[API] Chat GET Error:', error);
         return Response.json({ error: 'Internal Server Error' }, { status: 500 });
     }
 }

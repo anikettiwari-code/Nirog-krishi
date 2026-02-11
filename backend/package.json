@@ -1,22 +1,28 @@
 {
-  "name": "backend",
-  "version": "1.0.0",
-  "description": "��B\u0000a\u0000c\u0000k\u0000e\u0000n\u0000d\u0000 \u0000l\u0000o\u0000g\u0000i\u0000c\u0000 \u0000g\u0000o\u0000e\u0000s\u0000 \u0000h\u0000e\u0000r\u0000e\u0000\r\u0000 \u0000",
-  "main": "index.js",
-  "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "type": "commonjs",
-  "dependencies": {
-    "@google/genai": "^1.38.0",
-    "@google/generative-ai": "^0.24.1",
-    "cors": "^2.8.6",
-    "dotenv": "^17.2.3",
-    "express": "^5.2.1",
-    "mongoose": "^9.1.5",
-    "multer": "^2.0.2"
-  }
+    "name": "nirog-krishi-backend",
+    "version": "1.0.0",
+    "description": "Nirog Krishi Backend API with Supabase",
+    "main": "server.js",
+    "scripts": {
+        "start": "node server.js",
+        "dev": "nodemon server.js"
+    },
+    "keywords": [
+        "agriculture",
+        "plant-disease",
+        "ai"
+    ],
+    "author": "",
+    "license": "MIT",
+    "dependencies": {
+        "@google/generative-ai": "^0.24.1",
+        "@supabase/supabase-js": "^2.39.0",
+        "cors": "^2.8.5",
+        "dotenv": "^16.3.1",
+        "express": "^4.18.2",
+        "multer": "^1.4.5-lts.1"
+    },
+    "devDependencies": {
+        "nodemon": "^3.0.1"
+    }
 }

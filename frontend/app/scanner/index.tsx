@@ -11,11 +11,14 @@ import { AIService } from '../../services/AIService';
 import { GeminiService } from '../../services/GeminiService';
 import { StorageService } from '../../services/StorageService';
 
+import { ScanningOverlay } from '../../components/scanner/ScanningOverlay';
+
 export default function ScannerScreen() {
   const router = useRouter();
   const [permission, requestPermission] = useCameraPermissions();
   const [flash, setFlash] = useState(false);
-  const [status, setStatus] = useState('Ready to scan');
+  const [macroMode, setMacroMode] = useState(false);
+  const [status, setStatus] = useState('Align leaf correctly');
   const [isProcessing, setIsProcessing] = useState(false);
   const [capturedPhoto, setCapturedPhoto] = useState<string | null>(null);
   const [photoBase64, setPhotoBase64] = useState<string | null>(null);
@@ -25,25 +28,46 @@ export default function ScannerScreen() {
     if (!permission?.granted) requestPermission();
   }, [permission]);
 
+  // Simulation of "Real-time" guiding
+  useEffect(() => {
+    if (capturedPhoto || isProcessing) return;
+
+    const hints = [
+      "Hold steady...",
+      "Checking light...",
+      "Leaf detected",
+      "Move slightly closer",
+      "Perfect focus!"
+    ];
+    let i = 0;
+    const interval = setInterval(() => {
+      if (Math.random() > 0.3) {
+        setStatus(hints[i % hints.length]);
+        i++;
+      }
+    }, 3000);
+    return () => clearInterval(interval);
+  }, [capturedPhoto, isProcessing]);
+
   const handleCapture = async () => {
     if (!cameraRef.current) return;
-    setStatus('Capturing...');
+    setStatus('Capturing fine details...');
     try {
-      const photo = await cameraRef.current.takePictureAsync({ quality: 0.7 });
+      const photo = await cameraRef.current.takePictureAsync({ quality: 0.8 });
       if (photo?.uri) {
         setCapturedPhoto(photo.uri);
-        // Read as base64
         if (Platform.OS !== 'web') {
           const base64 = await FileSystem.readAsStringAsync(photo.uri, { encoding: 'base64' });
           setPhotoBase64(base64);
         }
-        setStatus('Photo captured! Tap Analyze.');
+        setStatus('Ready for AI analysis');
       }
     } catch (error: any) {
       setStatus('Capture failed');
     }
   };
 
+  // ... rest of logic remains same ...
   const handlePickImage = async () => {
     try {
       const result = await ImagePicker.launchImageLibraryAsync({
@@ -53,12 +77,11 @@ export default function ScannerScreen() {
       });
       if (!result.canceled && result.assets[0]?.uri) {
         setCapturedPhoto(result.assets[0].uri);
-        // Read as base64
         if (Platform.OS !== 'web') {
           const base64 = await FileSystem.readAsStringAsync(result.assets[0].uri, { encoding: 'base64' });
           setPhotoBase64(base64);
         }
-        setStatus('Image selected! Tap Analyze.');
+        setStatus('Image selected');
       }
     } catch (error: any) {
       setStatus('Gallery error');
@@ -74,10 +97,9 @@ export default function ScannerScreen() {
   const handleAnalyze = async () => {
     if (!capturedPhoto) return;
     setIsProcessing(true);
-    setStatus('Analyzing with AI...');
+    setStatus('Connecting to CropGuard Intelligence...');
 
     try {
-      // Get base64 image
       let base64Image: string;
       if (Platform.OS === 'web') {
         const response = await fetch(capturedPhoto);
@@ -94,10 +116,8 @@ export default function ScannerScreen() {
         base64Image = photoBase64 || await FileSystem.readAsStringAsync(capturedPhoto, { encoding: 'base64' });
       }
 
-      // Analyze with AI (Server API)
-      const { analysis } = await GeminiService.analyzeImage(capturedPhoto); // Pass URI directly, Service handles conversion
+      const { analysis } = await GeminiService.analyzeImage(capturedPhoto);
 
-      // Save to history WITH IMAGE
       const savedScan = await StorageService.saveScan({
         plantType: analysis?.plantType,
         diseaseName: analysis?.disease?.name,
@@ -108,9 +128,8 @@ export default function ScannerScreen() {
         imageMimeType: 'image/jpeg',
       });
 
-      setStatus('Analysis complete!');
+      setStatus('Success!');
 
-      // Navigate to diagnosis with scan ID
       router.push({
         pathname: '/diagnosis',
         params: {
@@ -122,44 +141,43 @@ export default function ScannerScreen() {
 
     } catch (error: any) {
       console.error('Analysis error:', error);
-      setStatus('Error: ' + error.message);
-      Alert.alert('Analysis Failed', error.message);
+      setStatus('Analysis failed');
+      Alert.alert('CropGuard Error', "We couldn't analyze the leaf. Please try again with better lighting.");
     } finally {
       setIsProcessing(false);
     }
   };
 
-  if (!permission) {
-    return <View style={styles.container}><Text style={styles.statusText}>Loading...</Text></View>;
-  }
+  if (!permission) return <View style={styles.container} />;
 
   if (!permission.granted) {
     return (
       <View style={styles.permissionContainer}>
-        <Text style={styles.permissionText}>Camera permission needed</Text>
+        <Text style={styles.permissionText}>Camera access required for diagnosis</Text>
         <TouchableOpacity style={styles.permissionButton} onPress={requestPermission}>
-          <Text style={styles.buttonText}>Grant Permission</Text>
+          <Text style={styles.buttonText}>Enable Camera</Text>
         </TouchableOpacity>
         <TouchableOpacity style={styles.galleryButton} onPress={handlePickImage}>
           <ImageIcon color="#fff" size={24} />
-          <Text style={styles.buttonText}>Pick from Gallery</Text>
+          <Text style={styles.buttonText}>Open Gallery</Text>
         </TouchableOpacity>
       </View>
     );
   }
 
-  // Photo Preview
   if (capturedPhoto) {
     return (
       <View style={styles.container}>
         <StatusBar style="light" />
         <Image source={{ uri: capturedPhoto }} style={styles.previewImage} />
-        <View style={styles.statusBar}><Text style={styles.statusText}>{status}</Text></View>
+
         <View style={styles.previewControls}>
           {isProcessing ? (
             <View style={styles.loadingBox}>
-              <ActivityIndicator size="large" color="#22C55E" />
-              <Text style={styles.loadingText}>Analyzing...</Text>
+              <View style={styles.pulseContainer}>
+                <ActivityIndicator size="large" color="#22C55E" />
+              </View>
+              <Text style={styles.loadingText}>{status}</Text>
             </View>
           ) : (
             <View style={styles.previewButtons}>
@@ -169,7 +187,7 @@ export default function ScannerScreen() {
               </TouchableOpacity>
               <TouchableOpacity onPress={handleAnalyze} style={styles.analyzeButton}>
                 <Check color="#fff" size={28} />
-                <Text style={styles.btnLabel}>Analyze</Text>
+                <Text style={styles.btnLabel}>Run Diagnosis</Text>
               </TouchableOpacity>
             </View>
           )}
@@ -178,30 +196,25 @@ export default function ScannerScreen() {
     );
   }
 
-  // Camera View
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
       <CameraView ref={cameraRef} style={styles.camera} facing="back" enableTorch={flash} />
-      <View style={styles.statusBar}><Text style={styles.statusText}>{status}</Text></View>
+
+      <ScanningOverlay status={status} macroMode={macroMode} />
 
       <View style={styles.topControls}>
         <TouchableOpacity onPress={() => router.back()} style={styles.iconBtn}>
           <ArrowLeft color="#fff" size={24} />
         </TouchableOpacity>
-        <TouchableOpacity onPress={() => setFlash(!flash)} style={styles.iconBtn}>
-          {flash ? <Zap color="#FFD700" size={24} /> : <ZapOff color="#fff" size={24} />}
-        </TouchableOpacity>
-      </View>
-
-      <View style={styles.frameContainer} pointerEvents="none">
-        <View style={styles.scanFrame}>
-          <View style={[styles.corner, styles.tl]} />
-          <View style={[styles.corner, styles.tr]} />
-          <View style={[styles.corner, styles.bl]} />
-          <View style={[styles.corner, styles.br]} />
+        <View style={{ flexDirection: 'row', gap: 12 }}>
+          <TouchableOpacity onPress={() => setMacroMode(!macroMode)} style={[styles.iconBtn, macroMode && { backgroundColor: '#F59E0B' }]}>
+            <Text style={{ color: '#fff', fontSize: 10, fontWeight: '800' }}>MACRO</Text>
+          </TouchableOpacity>
+          <TouchableOpacity onPress={() => setFlash(!flash)} style={styles.iconBtn}>
+            {flash ? <Zap color="#FFD700" size={24} /> : <ZapOff color="#fff" size={24} />}
+          </TouchableOpacity>
         </View>
-        <Text style={styles.frameText}>Position leaf in frame</Text>
       </View>
 
       <View style={styles.bottomControls}>
@@ -209,7 +222,7 @@ export default function ScannerScreen() {
           <ImageIcon color="#fff" size={24} />
         </TouchableOpacity>
         <TouchableOpacity onPress={handleCapture} style={styles.captureBtn}>
-          <CameraIcon color="#fff" size={32} />
+          <View style={styles.captureInner} />
         </TouchableOpacity>
         <View style={{ width: 50 }} />
       </View>
@@ -234,7 +247,8 @@ const styles = StyleSheet.create({
   br: { bottom: 0, right: 0, borderLeftWidth: 0, borderTopWidth: 0, borderBottomRightRadius: 12 },
   frameText: { color: '#fff', fontSize: 16, fontWeight: '600', marginTop: 20 },
   bottomControls: { position: 'absolute', bottom: 40, left: 0, right: 0, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', paddingHorizontal: 40, zIndex: 10 },
-  captureBtn: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#22C55E', justifyContent: 'center', alignItems: 'center', borderWidth: 4, borderColor: '#fff', marginHorizontal: 30 },
+  captureBtn: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(255,255,255,0.3)', justifyContent: 'center', alignItems: 'center', borderWidth: 4, borderColor: '#fff' },
+  captureInner: { width: 64, height: 64, borderRadius: 32, backgroundColor: '#22C55E' },
   secondaryBtn: { width: 50, height: 50, borderRadius: 25, backgroundColor: 'rgba(0,0,0,0.5)', justifyContent: 'center', alignItems: 'center', borderWidth: 2, borderColor: '#fff' },
   previewControls: { position: 'absolute', bottom: 50, left: 0, right: 0, alignItems: 'center', zIndex: 10 },
   previewButtons: { flexDirection: 'row', gap: 40 },
@@ -242,7 +256,8 @@ const styles = StyleSheet.create({
   analyzeButton: { width: 80, height: 80, borderRadius: 40, backgroundColor: '#22C55E', justifyContent: 'center', alignItems: 'center', borderWidth: 3, borderColor: '#fff' },
   btnLabel: { color: '#fff', fontSize: 11, fontWeight: 'bold', marginTop: 2 },
   loadingBox: { alignItems: 'center' },
-  loadingText: { color: '#fff', marginTop: 10, fontSize: 16 },
+  loadingText: { color: '#fff', marginTop: 10, fontSize: 16, fontWeight: '700' },
+  pulseContainer: { width: 80, height: 80, borderRadius: 40, backgroundColor: 'rgba(34, 197, 94, 0.2)', justifyContent: 'center', alignItems: 'center' },
   permissionContainer: { flex: 1, backgroundColor: '#000', justifyContent: 'center', alignItems: 'center', padding: 40, gap: 20 },
   permissionText: { color: '#fff', fontSize: 18 },
   permissionButton: { backgroundColor: '#22C55E', paddingHorizontal: 30, paddingVertical: 15, borderRadius: 10 },

@@ -1,5 +1,6 @@
-import { loadTensorflowModel } from 'react-native-fast-tflite';
+// import { loadTensorflowModel } from 'react-native-fast-tflite'; // Moved to internal to avoid crash on web
 import { Asset } from 'expo-asset';
+import { Platform } from 'react-native';
 import { API_CONFIG } from '../constants/config';
 import { AuthService } from './AuthService';
 import diseaseInfo from '../assets/disease_info.json';
@@ -14,9 +15,13 @@ export const AIService = {
      * Initialize the local offline model
      */
     init: async () => {
-        if (model) return;
+        if (model || Platform.OS === 'web') return;
         try {
             console.log('[AIService] Loading offline model...');
+
+            // Only require native module on native platforms
+            const { loadTensorflowModel } = require('react-native-fast-tflite');
+
             const modelAsset = Asset.fromModule(require('../assets/disease_detection.tflite'));
             await modelAsset.downloadAsync();
 

@@ -2,9 +2,10 @@ import { Platform } from 'react-native';
 
 // API Configuration
 export const API_CONFIG = {
-    GEMINI_API_KEY: 'AIzaSyBrj_UiI2AkY8DQLz9vlSl6mZoHDyQ1kDw',
-    GEMINI_MODEL: 'gemini-2.5-flash',
-    MONGODB_URI: 'mongodb+srv://mauryapankajchandrabali_db_user:wA5BYyLlK3G9VncB@cluster0.uheiaow.mongodb.net/nirogkrishi?retryWrites=true&w=majority',
-    // Single Server URL
-    API_BASE_URL: Platform.OS === 'web' ? '/api' : 'http://localhost:8081/api'
+    // Backend API (Supabase + Node.js)
+    API_BASE_URL: Platform.OS === 'web' ? 'http://localhost:5000' : 'http://10.0.2.2:5000',
+
+    // External APIs
+    WEATHER_API_KEY: '315b6495afa54175b6d84401262801',
+    MAPBOX_ACCESS_TOKEN: 'pk.eyJ1IjoicGFua2FqMDciLCJhIjoiY21reHJ2aWJ5MDIyajNjc2R4NmZ0Nm9qdyJ9.jByCUQcUGdwtGzgUbcMa-w',
 };

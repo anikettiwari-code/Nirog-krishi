@@ -1,0 +1,29 @@
+{
+    "project_info": {
+        "project_number": "133034986320",
+        "project_id": "nirogkrishi",
+        "storage_bucket": "nirogkrishi.firebasestorage.app"
+    },
+    "client": [
+        {
+            "client_info": {
+                "mobilesdk_app_id": "1:133034986320:android:8fdd77d5dbc8a49119fa55",
+                "android_client_info": {
+                    "package_name": "com.aniket.nirogkrishi"
+                }
+            },
+            "oauth_client": [],
+            "api_key": [
+                {
+                    "current_key": "AIzaSyDwsSJYBOeW1Uco2uM4bt4ycvqqGzv9cKo"
+                }
+            ],
+            "services": {
+                "appinvite_service": {
+                    "other_platform_oauth_client": []
+                }
+            }
+        }
+    ],
+    "configuration_version": "1"
+}

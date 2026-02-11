@@ -4,7 +4,26 @@ import { LinearGradient } from 'expo-linear-gradient';
 import { CloudRain, Droplets, MapPin, AlertTriangle } from 'lucide-react-native';
 import { COLORS, RADIUS, SPACING, SHADOWS } from '../../constants/theme';
 
+import { WeatherService, WeatherData } from '../../services/WeatherService';
+import { useEffect, useState } from 'react';
+import { Image, ActivityIndicator } from 'react-native';
+
 export const WeatherCard = () => {
+  const [weather, setWeather] = useState<WeatherData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    loadWeather();
+  }, []);
+
+  const loadWeather = async () => {
+    const data = await WeatherService.getWeather();
+    setWeather(data);
+    setLoading(false);
+  };
+
+  if (!weather) return null;
+
   return (
     <LinearGradient
       colors={['#3b82f6', '#2563eb']}
@@ -15,28 +34,45 @@ export const WeatherCard = () => {
       <View style={styles.weatherMain}>
         <View>
           <Text style={styles.weatherTitle}>Current Weather</Text>
-          <Text style={styles.temperature}>28°C</Text>
+          {loading ? (
+            <ActivityIndicator color={COLORS.white} />
+          ) : (
+            <Text style={styles.temperature}>{weather.temp_c}°C</Text>
+          )}
+
           <View style={styles.weatherStats}>
             <View style={styles.statItem}>
               <Droplets color={COLORS.white} size={16} />
-              <Text style={styles.statText}>Humidity{'\n'}85%</Text>
+              <Text style={styles.statText}>Humidity{'\n'}{weather.humidity}%</Text>
             </View>
             <View style={styles.statItem}>
               <MapPin color={COLORS.white} size={16} />
-              <Text style={styles.statText}>Location{'\n'}Pune, MH</Text>
+              <Text style={styles.statText}>Location{'\n'}{weather.location.name}, {weather.location.region.substring(0, 2).toUpperCase()}</Text>
             </View>
           </View>
         </View>
-        <CloudRain color={COLORS.white} size={64} style={{ opacity: 0.9 }} />
+
+        {/* Weather Icon */}
+        {weather.condition.icon ? (
+          <Image
+            source={{ uri: `https:${weather.condition.icon}` }}
+            style={{ width: 64, height: 64 }}
+          />
+        ) : (
+          <CloudRain color={COLORS.white} size={64} style={{ opacity: 0.9 }} />
+        )}
       </View>
 
-      <View style={styles.alertBanner}>
-        <View style={{flexDirection: 'row', alignItems: 'center', marginBottom: 4}}>
+      {/* Dynamic Alert based on Humidity */}
+      {weather.humidity > 80 && (
+        <View style={styles.alertBanner}>
+          <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 4 }}>
             <AlertTriangle color={COLORS.white} size={18} fill={COLORS.white} />
             <Text style={styles.alertTitle}>High Fungal Risk Today</Text>
+          </View>
+          <Text style={styles.alertDesc}>Humidity is {weather.humidity}%. Check crops for early blight.</Text>
         </View>
-        <Text style={styles.alertDesc}>High humidity detected. Check crops for early blight symptoms.</Text>
-      </View>
+      )}
     </LinearGradient>
   );
 };

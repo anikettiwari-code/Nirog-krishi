@@ -30,7 +30,7 @@ export default function ProfileScreen() {
     const loadUser = async () => {
         const currentUser = await AuthService.getCurrentUser();
         if (!currentUser) {
-            router.replace('/');
+            // Should not happen with guest mode active
             return;
         }
         setUser(currentUser);
@@ -48,6 +48,8 @@ export default function ProfileScreen() {
     const handleSave = async () => {
         try {
             const updated = await AuthService.updateProfile({
+                userId: user?.userId,
+                username: user?.userId,
                 displayName: editName,
                 location: editLocation,
                 phone: editPhone,
@@ -145,12 +147,21 @@ export default function ProfileScreen() {
                         )}
                     </View>
 
-                    {/* Username (non-editable) */}
+                    {/* Username (Editable) */}
                     <View style={styles.infoRow}>
                         <User color="#6B7280" size={18} />
                         <View style={styles.infoContent}>
-                            <Text style={styles.infoLabel}>Username</Text>
-                            <Text style={styles.infoValue}>@{user?.username}</Text>
+                            <Text style={styles.infoLabel}>User ID</Text>
+                            {isEditing ? (
+                                <TextInput
+                                    style={styles.editInput}
+                                    value={user?.userId}
+                                    onChangeText={(text) => setUser(prev => prev ? { ...prev, userId: text, username: text } : null)}
+                                    placeholder="Set User ID"
+                                />
+                            ) : (
+                                <Text style={styles.infoValue}>@{user?.userId}</Text>
+                            )}
                         </View>
                     </View>
 

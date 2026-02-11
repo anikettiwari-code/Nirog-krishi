@@ -1,5 +1,5 @@
-import connectToDatabase from '../../../lib/db';
-import User from '../../../models/User';
+import { db } from '../../../lib/firebase';
+import { collection, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 
 export async function POST(request: Request) {
     try {
@@ -9,27 +9,33 @@ export async function POST(request: Request) {
             return Response.json({ error: 'Missing fields' }, { status: 400 });
         }
 
-        await connectToDatabase();
+        const userRef = doc(db, 'users', userId);
+        const userSnap = await getDoc(userRef);
 
-        const existingUser = await User.findOne({ userId });
-        if (existingUser) {
+        if (userSnap.exists()) {
             console.log('❌ Register: User ID exists:', userId);
             return Response.json({ error: 'User ID already exists' }, { status: 400 });
         }
 
-        console.log('✨ Register: Creating new user...');
-        const newUser = new User({ userId, name, password });
-        await newUser.save();
+        console.log('✨ Register: Creating new user in Firestore...');
+        const userData = {
+            userId,
+            name,
+            password, // In production, hash this
+            createdAt: serverTimestamp()
+        };
+
+        await setDoc(userRef, userData);
         console.log('✅ Register: User saved');
 
         return Response.json({
-            userId: newUser.userId,
-            name: newUser.name,
-            createdAt: newUser.createdAt
+            userId: userData.userId,
+            name: userData.name,
+            createdAt: new Date().toISOString()
         });
 
     } catch (error: any) {
         console.error('Registration Error:', error);
-        return Response.json({ error: 'Internal Server Error' }, { status: 500 });
+        return Response.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
     }
 }

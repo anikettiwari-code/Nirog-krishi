@@ -1,5 +1,5 @@
-import connectToDatabase from '../../../lib/db';
-import User from '../../../models/User';
+import { db } from '../../../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
 
 export async function POST(request: Request) {
     try {
@@ -9,22 +9,27 @@ export async function POST(request: Request) {
             return Response.json({ error: 'Missing fields' }, { status: 400 });
         }
 
-        await connectToDatabase();
+        const userRef = doc(db, 'users', userId);
+        const userSnap = await getDoc(userRef);
 
-        const user = await User.findOne({ userId });
+        if (!userSnap.exists()) {
+            return Response.json({ error: 'Invalid credentials' }, { status: 401 });
+        }
 
-        if (!user || user.password !== password) {
+        const user = userSnap.data();
+
+        if (user.password !== password) {
             return Response.json({ error: 'Invalid credentials' }, { status: 401 });
         }
 
         return Response.json({
             userId: user.userId,
             name: user.name,
-            createdAt: user.createdAt
+            createdAt: user.createdAt?.toDate?.() || user.createdAt
         });
 
     } catch (error: any) {
         console.error('Login Error:', error);
-        return Response.json({ error: 'Internal Server Error' }, { status: 500 });
+        return Response.json({ error: 'Internal Server Error', details: error.message }, { status: 500 });
     }
 }

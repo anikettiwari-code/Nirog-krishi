@@ -29,7 +29,7 @@ export const FeaturedCropCard = () => {
                 <View style={styles.chartLine} />
                 <View style={styles.chartPoints}>
                     {[20, 40, 30, 60, 50, 80, 70].map((h, i) => (
-                        <View key={i} style={[styles.chartPoint, { bottom: h + '%' }]} />
+                        <View key={i} style={[styles.chartPoint, { bottom: `${h}%` as any }]} />
                     ))}
                 </View>
                 <Text style={styles.chartLabel}>7-Day Trend</Text>

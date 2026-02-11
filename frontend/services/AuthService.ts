@@ -125,7 +125,20 @@ export const AuthService = {
     getCurrentUser: async (): Promise<User | null> => {
         try {
             const data = await AsyncStorage.getItem(STORAGE_KEYS.CURRENT_USER);
-            return data ? JSON.parse(data) : null;
+            if (data) return JSON.parse(data);
+
+            // Default Guest User for "Login-Free" experience
+            const guestUser: User = {
+                userId: 'guest_user',
+                username: 'guest_user',
+                password: '',
+                displayName: 'Guest Farmer',
+                createdAt: new Date().toISOString(),
+                lastLogin: new Date().toISOString(),
+                location: 'India',
+                phone: ''
+            };
+            return guestUser;
         } catch {
             return null;
         }
@@ -133,8 +146,7 @@ export const AuthService = {
 
     // Check if logged in
     isLoggedIn: async (): Promise<boolean> => {
-        const user = await AuthService.getCurrentUser();
-        return user !== null;
+        return true; // Always true for guest mode
     },
 
     // Clear local data
@@ -142,10 +154,8 @@ export const AuthService = {
         await AsyncStorage.clear();
     },
 
-    // --- Legacy / Unimplemented Methods for MongoDB Version ---
-
+    // Update Profile (Local Only)
     updateProfile: async (updates: Partial<User>): Promise<User> => {
-        // TODO: Implement /auth/update endpoint in backend
         const currentUser = await AuthService.getCurrentUser();
         if (!currentUser) throw new Error('Not logged in');
 
