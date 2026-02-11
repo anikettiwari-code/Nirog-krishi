@@ -28,8 +28,7 @@ export async function POST(request: Request) {
         // AI Analysis
         const apiKey = process.env.GEMINI_API_KEY || API_CONFIG.GEMINI_API_KEY;
         const ai = new GoogleGenAI({ apiKey });
-        // User requested "2.5 flash" -> Mapping to 2.0 Flash Experimental
-        const MODEL = 'gemini-2.0-flash-exp';
+        const MODEL = 'gemini-2.5-flash';
 
         console.log('[API] Analyzing image...', image.name, image.size);
 

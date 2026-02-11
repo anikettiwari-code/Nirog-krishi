@@ -15,9 +15,16 @@ const upload = multer({ storage: multer.memoryStorage() });
 
 // ==================== GEMINI AI ====================
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
-const MODEL = 'gemini-1.5-flash';
+const ANALYSIS_MODEL = 'gemini-2.5-flash';
+const CHAT_MODEL = 'gemini-2.5-flash-lite';
 
 // ==================== ROUTES ====================
+
+// Logging Middleware
+app.use((req, res, next) => {
+    console.log(`[${new Date().toISOString()}] ${req.method} ${req.url}`);
+    next();
+});
 
 // Health Check
 app.get('/', (req, res) => {
@@ -46,13 +53,22 @@ app.post('/analyze', upload.single('image'), async (req, res) => {
 {
     "plantType": "plant name",
     "isHealthy": true/false,
-    "disease": { "name": "string", "severity": "Mild/Moderate/Severe", "symptoms": [], "treatment": [], "prevention": [] },
+    "confidence": 0-100,
+    "disease": { 
+        "name": "string", 
+        "severity": "Mild/Moderate/Severe", 
+        "symptoms": [], 
+        "reasoning": "Detailed visual explanation.",
+        "treatment_steps": ["Step 1", "Step 2"], 
+        "prevention_steps": ["..."],
+        "expert_insights": ["Tip 1"]
+    },
     "summary": "brief summary"
 }
 If healthy, set disease to null.` }
         ];
 
-        const model = genAI.getGenerativeModel({ model: MODEL });
+        const model = genAI.getGenerativeModel({ model: ANALYSIS_MODEL });
         const result = await model.generateContent(contents);
         const response = await result.response;
         const resultText = response.text();
@@ -145,7 +161,7 @@ ${context ? `\nConversation:\n${context}\n` : ''}
 User: ${message}
 Assistant:`;
 
-        const model = genAI.getGenerativeModel({ model: MODEL });
+        const model = genAI.getGenerativeModel({ model: CHAT_MODEL });
         const result = await model.generateContent(prompt);
         const response = await result.response;
         const reply = response.text();
@@ -246,7 +262,7 @@ app.post('/outbreaks', async (req, res) => {
 // ==================== START SERVER ====================
 app.listen(port, () => {
     console.log(`\n🚀 Nirog Krishi Backend running at http://localhost:${port}`);
-    console.log(`📊 Model: ${MODEL}`);
+    console.log(`📊 Models: Analysis: ${ANALYSIS_MODEL}, Chat: ${CHAT_MODEL}`);
     console.log(`🗄️  Database: Supabase (PostgreSQL)`);
     console.log(`📡 Endpoints: /analyze, /chat, /history, /outbreaks\n`);
 });

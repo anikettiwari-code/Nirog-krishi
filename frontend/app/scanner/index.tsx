@@ -6,7 +6,7 @@ import { COLORS, SPACING, RADIUS } from '../../constants/theme';
 import { StatusBar } from 'expo-status-bar';
 import { ArrowLeft, Zap, ZapOff, Camera as CameraIcon, Image as ImageIcon, X, Check } from 'lucide-react-native';
 import * as ImagePicker from 'expo-image-picker';
-import * as FileSystem from 'expo-file-system';
+import * as FileSystem from 'expo-file-system/legacy';
 import { AIService } from '../../services/AIService';
 import { GeminiService } from '../../services/GeminiService';
 import { StorageService } from '../../services/StorageService';

@@ -30,8 +30,7 @@ export async function POST(request: Request) {
         if (!apiKey) throw new Error('Gemini API Key is missing. Check .env or config.ts');
 
         const ai = new GoogleGenAI({ apiKey });
-        // User requested "2.5 flash" -> Mapping to 2.0 Flash Experimental
-        const MODEL = 'gemini-2.0-flash-exp';
+        const MODEL = 'gemini-2.5-flash-lite';
 
         const prompt = `You are CropGuard AI, an expert agricultural assistant. Help farmers with plant diseases, pest control, fertilizers, irrigation tips. Be helpful and concise.
 ${context ? `\nConversation:\n${context}\n` : ''}

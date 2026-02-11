@@ -9,7 +9,7 @@ async function testGemini() {
         console.log('Testing Gemini API...');
         console.log('API Key:', process.env.GEMINI_API_KEY?.substring(0, 20) + '...');
 
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
         const result = await model.generateContent('Hello, are you working?');
         const response = await result.response;
         const text = response.text();

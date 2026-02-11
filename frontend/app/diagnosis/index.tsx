@@ -52,7 +52,9 @@ export default function DiagnosisReport() {
         {/* Status Banner */}
         <View style={[styles.banner, { backgroundColor: isHealthy ? '#22C55E' : '#EF4444' }]}>
           {isHealthy ? <CheckCircle color="#fff" size={40} /> : <AlertTriangle color="#fff" size={40} />}
-          <Text style={styles.bannerTitle}>{isHealthy ? 'Healthy Plant!' : 'Disease Detected'}</Text>
+          <Text style={styles.bannerTitle}>
+            {isHealthy ? 'Healthy Plant!' : (disease?.name || 'Disease Detected')}
+          </Text>
           <Text style={styles.bannerSubtitle}>{plantType}</Text>
         </View>
 
